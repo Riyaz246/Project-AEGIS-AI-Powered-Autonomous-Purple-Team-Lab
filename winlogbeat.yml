@@ -1,0 +1,14 @@
+winlogbeat.event_logs:
+  - name: Microsoft-Windows-Sysmon/Operational
+    ignore_older: 72h
+
+output.elasticsearch:
+  hosts: ["<KALI_IP>:9200"]
+  username: "elastic"
+  password: "changeme"
+
+setup.kibana:
+  host: "<KALI_IP>:5601"
+
+setup.template.settings:
+  index.number_of_shards: 1
