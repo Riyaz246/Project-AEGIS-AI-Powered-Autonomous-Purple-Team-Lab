@@ -1,0 +1,63 @@
+version: '3'
+services:
+  # 1. The Database (Elasticsearch)
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.17.9
+    container_name: aegis_elastic
+    environment:
+      - node.name=aegis-node
+      - discovery.type=single-node
+      - "ES_JAVA_OPTS=-Xms1g -Xmx1g"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    ports:
+      - "9200:9200"
+    networks:
+      - aegis_net
+    mem_limit: 2g
+
+  # 2. The Dashboard (Kibana)
+  kibana:
+    image: docker.elastic.co/kibana/kibana:7.17.9
+    container_name: aegis_kibana
+    ports:
+      - "5601:5601"
+    environment:
+      - ELASTICSEARCH_HOSTS=http://aegis_elastic:9200
+    networks:
+      - aegis_net
+    depends_on:
+      - elasticsearch
+    mem_limit: 1g
+
+  # 3. The Network Sensor (Zeek)
+  zeek:
+    image: zeek/zeek:lts
+    container_name: aegis_zeek
+    network_mode: "host"
+    volumes:
+      - ../pcap:/pcap
+      - ../zeek-logs:/opt/zeek/logs
+    cap_add:
+      - NET_ADMIN
+    tty: true
+    stdin_open: true
+
+  # 4. The Log Shipper (Filebeat)
+  filebeat:
+    image: docker.elastic.co/beats/filebeat:7.17.9
+    container_name: aegis_filebeat
+    user: root
+    volumes:
+      - ../zeek-logs:/logs:ro
+      - ./filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
+    networks:
+      - aegis_net
+    depends_on:
+      - elasticsearch
+
+networks:
+  aegis_net:
+    driver: bridge
